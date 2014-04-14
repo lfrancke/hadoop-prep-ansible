@@ -1,0 +1,17 @@
+---
+
+- name: Fetch /etc/redhat-release file
+  fetch: src=/etc/redhat-release dest={{host_info_folder_full}}/redhat-release flat=yes
+  when: ansible_os_family == "RedHat"
+
+- name: Fetch /etc/hosts file
+  fetch: src=/etc/hosts dest={{host_info_folder_full}}/hosts flat=yes
+
+- name: Fetch /etc/resolv.conf file
+  fetch: src=/etc/resolv.conf dest={{host_info_folder_full}}/resolv.conf flat=yes
+
+- name: Fetch /etc/nsswitch.conf file
+  fetch: src=/etc/nsswitch.conf dest={{host_info_folder_full}}/nsswitch.conf flat=yes
+
+- name: Fetch /etc/host.conf file
+  fetch: src=/etc/host.conf dest={{host_info_folder_full}}/host.conf flat=yes

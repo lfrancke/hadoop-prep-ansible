@@ -1,0 +1,4 @@
+---
+
+host_info_folder: host-info
+host_info_folder_full: "{{ host_info_folder }}/{{ ansible_fqdn }}"

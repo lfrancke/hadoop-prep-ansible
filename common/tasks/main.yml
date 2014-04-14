@@ -1,0 +1,89 @@
+---
+
+- name: Ensure that the servers are up-to-date
+  yum: name='*' state=latest
+
+- name: Ensure that common packages are installed
+  yum: name={{item}} state=present
+  with_items:
+    - atop
+    - htop
+    - iftop
+    - iotop
+    - java-1.7.0-openjdk
+    - java-1.7.0-openjdk-devel
+    - libselinux-python
+    - lsof
+    - man
+    - ntp
+    - postfix
+    - smartmontools
+    - strace
+    - sysstat
+    - tmux
+    - vim-enhanced
+
+# This sometimes happens when using the Express Installer from Cloudera Manager
+- name: Ensure that no other Java package is installed
+  yum: name=jdk state=absent
+
+- name: Ensure that swappiness is set to 0
+  sysctl: name=vm.swappiness value=0 state=present ignoreerrors=yes
+
+# See HBASE-6139 for details, this is 4 times the default value (tested on 64GB systems)
+- name: Ensure that min_free_kbytes is set
+  sysctl: name=vm.min_free_kbytes value=360448 state=present ignoreerrors=yes
+  when: set_min_free_kbytes
+
+- name: Ensure that unnecessary services are disabled
+  service: name={{item}} state=stopped enabled=no
+  ignore_errors: yes
+  with_items:
+    - cups
+    - iptables
+    - ip6tables
+
+# Postfix is needed for email delivery (e.g. notifications)
+- name: Ensure that necessary service are enabled
+  service: name={{item}} state=started enabled=yes
+  ignore_errors: yes
+  with_items:
+    - postfix
+    - ntpd
+
+- name: Ensure that security limits are set
+  lineinfile: dest=/etc/security/limits.conf line="{{item.line}}"
+  with_items:
+    - { line: 'hdfs - nofile 32768' }
+    - { line: 'mapred - nofile 32768' }
+    - { line: 'hbase - nofile 32768' }
+    - { line: 'hdfs - nproc 32768' }
+    - { line: 'mapred - nproc 32768' }
+    - { line: 'hbase - nproc 32768' }
+
+- name: Ensure that transparent hugepage compaction is turned off on reboot
+  lineinfile: dest=/etc/rc.d/rc.local regexp='^.*transparent_hugepage.*$' line='echo never > /sys/kernel/mm/redhat_transparent_hugepage/defrag'
+
+- name: Check if transparent hugepage compaction is currently on
+  shell: grep '\[always\]' /sys/kernel/mm/redhat_transparent_hugepage/defrag | wc -l
+  always_run: yes
+  register: transparent_hugepage_status
+  changed_when: transparent_hugepage_status.stdout == "1"
+
+- name: Ensure that transparent hugepage compaction is off
+  shell: echo 'never' > /sys/kernel/mm/redhat_transparent_hugepage/defrag
+  when: transparent_hugepage_status.stdout == "1"
+
+- name: Ensure that SELinux is disabled
+  selinux: state=disabled
+  notify:
+    - reboot
+
+- name: Ensure that IPv6 is disabled
+  copy: src=disable-ipv6.conf dest=/etc/modprobe.d owner=root group=root mode=0644
+
+- name: Ensure that NSS is set up correctly
+  lineinfile: 'dest=/etc/nsswitch.conf regexp="^hosts:.*$" line="hosts: files dns"'
+
+- name: Ensure that /etc/host.conf is set up correctly
+  lineinfile: 'dest=/etc/host.conf regexp="^order .*$" line="order hosts, bind"'

@@ -1,0 +1,16 @@
+---
+
+- name: Ensure that prerequisites are fulfilled
+  hosts: all
+  pre_tasks:
+    - name: Check for supported OS
+      fail: msg="{{ansible_distribution}} is not supported (currently only CentOS is supported)"
+      when: ansible_distribution != 'CentOS'
+
+  roles:
+    - common
+
+- name: Collect information from all machines locally
+  hosts: all
+  roles:
+    - fetch-info
