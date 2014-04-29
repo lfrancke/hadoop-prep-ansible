@@ -25,12 +25,17 @@
 
 # This sometimes happens when using the Express Installer from Cloudera Manager
 - name: Ensure that no other Java package is installed
-  yum: name=jdk state=absent
+  yum: name={{item}} state=absent
+  with_items:
+    - jdk
+    - java-1.6.0-openjdk
+    - oracle-j2sdk1.7
 
-- name: Ensure that swappiness is set to 0
-  sysctl: name=vm.swappiness value=0 state=present ignoreerrors=yes
+# http://www.mysqlperformanceblog.com/2014/04/28/oom-relation-vm-swappiness0-new-kernel/
+- name: Ensure that swappiness is set to 1
+  sysctl: name=vm.swappiness value=1 state=present ignoreerrors=yes
 
-# See HBASE-6139 for details, this is 4 times the default value (tested on 64GB systems)
+# See HBASE-6139 for details, this is 4 times the default value (tested on 64GB systems on CentOS 6.5)
 - name: Ensure that min_free_kbytes is set
   sysctl: name=vm.min_free_kbytes value=360448 state=present ignoreerrors=yes
   when: set_min_free_kbytes
